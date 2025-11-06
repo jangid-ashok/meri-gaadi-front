@@ -1,0 +1,42 @@
+{
+    "hatchback": {
+        "name": "Hatchback",
+        "slug": "hatchback",
+        "image": "hatchback.png"
+    },
+    "suv": {
+        "name": "SUV",
+        "slug": "suv",
+        "image": "suv.webp"
+    },
+    "muv": {
+        "name": "MUV",
+        "slug": "muv",
+        "image": "muv.png"
+    },
+    "sedan": {
+        "name": "Sedan",
+        "slug": "sedan",
+        "image": "sedan.png"
+    },
+    "ev": {
+        "name": "Electric Vehicle(EV)",
+        "slug": "ev",
+        "image": "ev.png"
+    },
+    "supercar": {
+        "name": "Super Car",
+        "slug": "supercar",
+        "image": "super-car.png"
+    },
+    "pickup-truck": {
+        "name": "Pick Up Truck",
+        "slug": "pickup-truck",
+        "image": "pick-up-truck.png"
+    },
+    "convertible": {
+        "name": "Convertible",
+        "slug": "convertible",
+        "image": "convertible.png"
+    }
+}

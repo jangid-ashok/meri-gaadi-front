@@ -6,20 +6,17 @@ import MOBILE_LOGO from "../assets/images/logo/mg-logo.svg";
 const Navbar = () => {
   const navItems = [
     { label: "Home", path: "/" },
+    { label: "Cars", path: "/cars" },
+    { label: "Stories", path: "/blogs" },
+    { label: "Brands", path: "/brands" },
     { label: "Categories", path: "/categories" },
-    { label: "Blogs", path: "/blogs" },
   ];
 
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { pathname } = useLocation();
-  const atTopOnHome = pathname === "/" && !isScrolled;
 
-  const navLinkClass = ({ isActive }) =>
-    [
-      "rounded-md px-2 py-1 text-base font-medium transition outline-none",
-      "focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2",
-      isActive ? "font-semibold text-blue-600" : "text-slate-700 hover:text-blue-600",
-    ].join(" ");
+  const navLinkClass = ({ isActive }) => `mg-nav-link${isActive ? " is-active" : ""}`;
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10);
@@ -28,23 +25,25 @@ const Navbar = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const headerSurface = isScrolled
-    ? "border-slate-200/80 bg-white shadow-sm"
-    : atTopOnHome
-      ? "border-slate-200/70 bg-white/92 shadow-sm"
-      : "border-transparent bg-transparent";
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setIsMenuOpen(false);
+    };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [isMenuOpen]);
 
   return (
-    <header
-      className={[
-        "sticky top-0 z-50 w-full border-b transition-[background-color,box-shadow,border-color] duration-200",
-        headerSurface,
-      ].join(" ")}
-    >
-      <div className="mx-auto flex h-[4.5rem] max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8 sm:h-20">
+    <header className={`mg-site-header${isScrolled ? " is-scrolled" : ""}`}>
+      <div className="mg-site-header-inner">
         <Link
           to="/"
-          className="shrink-0 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+          className="mg-site-logo"
           aria-label="Meri Gaadi — Home"
         >
           <img src={MOBILE_LOGO} alt="" className="block h-11 w-auto sm:hidden" />
@@ -54,9 +53,20 @@ const Navbar = () => {
             className="hidden h-11 w-auto sm:block md:h-14"
           />
         </Link>
-        <nav className="flex items-center gap-4 sm:gap-8" aria-label="Primary">
+        <button
+          type="button"
+          className={`mg-menu-toggle${isMenuOpen ? " is-open" : ""}`}
+          aria-expanded={isMenuOpen}
+          aria-controls="mg-primary-navigation"
+          aria-label={isMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          onClick={() => setIsMenuOpen((open) => !open)}
+        >
+          <span>{isMenuOpen ? "Close" : "Menu"}</span>
+          <span className="mg-menu-icon" aria-hidden="true"><i /><i /></span>
+        </button>
+        <nav id="mg-primary-navigation" className={`mg-primary-nav${isMenuOpen ? " is-open" : ""}`} aria-label="Primary">
           {navItems.map((item) => (
-            <NavLink key={item.path} to={item.path} className={navLinkClass}>
+            <NavLink key={item.path} to={item.path} end={item.path === "/"} className={navLinkClass}>
               {item.label}
             </NavLink>
           ))}

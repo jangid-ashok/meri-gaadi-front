@@ -1,246 +1,529 @@
 import { Link } from "react-router-dom";
-import HEADER_IMAGE from "../assets/images/car-01.jpg";
-import blogs from "../assets/data/blogs.js";
-import CATEGORIES from "../assets/data/categories.json";
-import { categoryCardGradient } from "../constants/categoryGradients";
+import { useEffect, useState } from "react";
+import DEFAULT_HERO_IMAGE from "../assets/images/hero-default.jpg";
 
-const getDescription = (blog) => blog.shorDescription || blog.shortDescription || "";
-const getImageSrc = (image) => (image?.startsWith("http") ? image : `${window.location.origin}/${image.replace(/^\//, "")}`);
+const fetchData = async (path, signal) => {
+    const response = await fetch(path, {
+        signal,
+        headers: { Accept: "application/json" },
+    });
 
-const formatDate = (date) =>
-    new Date(date).toLocaleDateString("en-IN", {
+    if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    console.log(`Fetched data from ${path}:`, result);
+    return result.data;
+};
+
+const getImage = (image) => {
+    if (typeof image === "string") return { url: image };
+    return image && typeof image === "object" ? image : null;
+};
+
+const formatDate = (date) => {
+    if (!date || Number.isNaN(Date.parse(date))) return null;
+    return new Date(date).toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
         year: "numeric",
     });
+};
 
-const Home = () => {
-    const heroBlog = blogs[0];
-    const featuredBlogs = blogs.slice(1, 4);
-    const latestBlogs = blogs.slice(4, 10);
+const applySeoTag = (selector, tagName, keyName, keyValue, valueName, value) => {
+    let element = document.head.querySelector(selector);
+    if (!element && !value) return null;
+
+    const created = !element;
+    if (created) {
+        element = document.createElement(tagName);
+        element.setAttribute(keyName, keyValue);
+        document.head.appendChild(element);
+    }
+
+    const previousValue = element.getAttribute(valueName);
+    if (value) element.setAttribute(valueName, value);
+    else element.removeAttribute(valueName);
+
+    return () => {
+        if (created) element.remove();
+        else if (previousValue === null) element.removeAttribute(valueName);
+        else element.setAttribute(valueName, previousValue);
+    };
+};
+
+const useHomepageSeo = (seo) => {
+    useEffect(() => {
+        if (!seo) return undefined;
+
+        const previousTitle = document.title;
+        document.title = seo.title || previousTitle;
+
+        const changes = [
+            ["meta[name='description']", "meta", "name", "description", "content", seo.description],
+            ["meta[name='robots']", "meta", "name", "robots", "content", seo.robots],
+            ["meta[property='og:title']", "meta", "property", "og:title", "content", seo.og?.title],
+            ["meta[property='og:description']", "meta", "property", "og:description", "content", seo.og?.description],
+            ["meta[property='og:image']", "meta", "property", "og:image", "content", seo.og?.image],
+            ["meta[name='twitter:card']", "meta", "name", "twitter:card", "content", seo.twitter?.card],
+            ["meta[name='twitter:title']", "meta", "name", "twitter:title", "content", seo.twitter?.title],
+            ["meta[name='twitter:description']", "meta", "name", "twitter:description", "content", seo.twitter?.description],
+            ["meta[name='twitter:image']", "meta", "name", "twitter:image", "content", seo.twitter?.image],
+            ["link[rel='canonical']", "link", "rel", "canonical", "href", seo.canonical],
+        ].map(([selector, tagName, keyName, keyValue, valueName, value]) =>
+            applySeoTag(selector, tagName, keyName, keyValue, valueName, value)
+        ).filter(Boolean);
+
+        return () => {
+            document.title = previousTitle;
+            changes.reverse().forEach((restore) => restore());
+        };
+    }, [seo]);
+};
+
+const ImagePanel = ({ image, alt, className = "" }) => {
+    const [failed, setFailed] = useState(false);
+    const media = getImage(image);
 
     return (
-        <div>
-            <section className="relative isolate overflow-hidden bg-slate-950">
-                <div className="absolute inset-0">
-                    <img src={HEADER_IMAGE} alt="Meri Gaadi hero" className="h-full w-full object-cover opacity-30" />
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.28),_transparent_36%),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.92),rgba(30,64,175,0.72))]" />
+        <div className={`relative overflow-hidden bg-[#dce7d6] ${className}`}>
+            {media?.url && !failed ? (
+                <img
+                    src={media.url}
+                    alt={media.alt_text || alt || ""}
+                    loading="lazy"
+                    decoding="async"
+                    onError={() => setFailed(true)}
+                    className="absolute inset-0 h-full w-full object-cover"
+                />
+            ) : (
+                <div aria-hidden="true" className="absolute inset-0 overflow-hidden bg-[#dce7d6]">
+                    <div className="absolute inset-y-0 right-[16%] w-[30%] -skew-x-[28deg] border-x-[14px] border-dashed border-[#5d8065]/55" />
+                    <div className="absolute -right-10 top-0 h-full w-[28%] skew-x-[-28deg] bg-[#c2d3bd]" />
+                    <span className="absolute bottom-2 left-4 font-serif text-5xl font-bold text-[#31513c]/25" aria-hidden="true">
+                        MG
+                    </span>
                 </div>
+            )}
+        </div>
+    );
+};
 
-                <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-16 md:px-8 md:py-24 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-                    <div className="space-y-7 text-white">
-                        <span className="inline-flex rounded-full border border-white/15 bg-white/10 px-4 py-1 text-xs font-semibold uppercase tracking-[0.28em] text-blue-100">
-                            Meri Gaadi Editorial
-                        </span>
-                        <div className="max-w-2xl space-y-5">
-                            <h1 className="text-4xl font-bold leading-tight md:text-6xl">
-                                Indian auto stories shaped like a publication, not a parts catalog.
+const HeroImage = ({ image, alt }) => {
+    const media = getImage(image);
+    const source = media?.url || DEFAULT_HERO_IMAGE;
+    const [failedSource, setFailedSource] = useState(null);
+    const imageSource = failedSource === source ? DEFAULT_HERO_IMAGE : source;
+    const usingFallback = imageSource === DEFAULT_HERO_IMAGE;
+
+    return (
+        <div className="absolute inset-y-0 right-0 w-full overflow-hidden bg-[#263c35] lg:w-[72%] xl:w-[76%]">
+            <img
+                src={imageSource}
+                alt={usingFallback ? "Car on the road" : media?.alt_text || alt || "Featured car"}
+                loading="eager"
+                decoding="async"
+                fetchPriority="high"
+                onError={() => {
+                    if (!usingFallback) setFailedSource(source);
+                }}
+                className="absolute inset-0 h-full w-full object-contain object-top lg:object-right"
+            />
+        </div>
+    );
+};
+
+const getItemHref = (item, type = "content") => {
+    if (item?.cta?.url) return item.cta.url;
+    if (item?.url) return item.url;
+    if (type === "article" && item?.slug) return `/blog-info/${item.slug}`;
+    if (type === "brand" && item?.slug) return `/brands/${item.slug}`;
+    if (type === "category" && item?.slug) return `/categories/${item.slug}`;
+    if (type === "car" && item?.brand?.slug && item?.slug) return `/cars/${item.brand.slug}/${item.slug}`;
+    return null;
+};
+
+const SectionHeading = ({ title, eyebrow, intro, action }) => (
+    <div className="mb-7 flex flex-col gap-3 sm:mb-8">
+        {eyebrow && <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#e3825a]">{eyebrow}</p>}
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <h2 className="max-w-3xl font-serif text-3xl font-bold leading-[1.05] text-[#14251d] sm:text-4xl">{title}</h2>
+            {action}
+        </div>
+        {intro && <p className="max-w-2xl text-sm leading-6 text-[#4d5b55] sm:text-base">{intro}</p>}
+    </div>
+);
+
+const SectionState = ({ children, error = false }) => (
+    <p
+        role={error ? "alert" : "status"}
+        className={`border-l-2 px-4 py-3 text-sm leading-6 ${error ? "border-[#d76b49] bg-[#fff4f1] text-[#7f382a]" : "border-[#c7d3bd] bg-[#f7f9f3] text-[#55625d]"}`}
+    >
+        {children}
+    </p>
+);
+
+const LoadingCards = ({ count = 3 }) => (
+    <div aria-label="Loading content" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: count }, (_, index) => (
+            <div key={index} aria-hidden="true" className="h-56 animate-pulse rounded-[1.5rem] bg-[#eaf0e5]" />
+        ))}
+    </div>
+);
+
+const ContentSection = ({ id, title, eyebrow, intro, status, items, emptyMessage, children, onRetry, action }) => (
+    <section
+        aria-labelledby={`${id}-heading`}
+        className={`px-4 sm:px-6 lg:px-8 ${status === "success" && items.length === 0 ? "py-6 md:py-8" : "py-10 md:py-14"}`}
+    >
+        <div className="mx-auto max-w-7xl">
+            <SectionHeading title={<span id={`${id}-heading`}>{title}</span>} eyebrow={eyebrow} intro={intro} action={action} />
+            {status === "loading" && <LoadingCards />}
+            {status === "error" && (
+                <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <SectionState error>Featured content could not be loaded.</SectionState>
+                    {onRetry && <RetryButton onClick={onRetry} />}
+                </div>
+            )}
+            {status === "success" && (items.length ? children : <SectionState>{emptyMessage}</SectionState>)}
+        </div>
+    </section>
+);
+
+const RetryButton = ({ onClick }) => (
+    <button
+        type="button"
+        onClick={onClick}
+        className="inline-flex min-h-11 items-center border border-[#1a3129] bg-[#1a3129] px-4 text-sm font-bold text-white transition hover:bg-[#213d34] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3825a] focus-visible:ring-offset-2"
+    >
+        Try again
+    </button>
+);
+
+const FeaturedCard = ({ item }) => {
+    const href = getItemHref(item);
+    const metaLabel = item.category?.name || item.category || item.brand?.name || "Feature";
+
+    const card = (
+        <>
+            <div className="relative overflow-hidden">
+                <ImagePanel image={item.image} alt={item.image?.alt_text || item.title} className="aspect-[16/9]" />
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0d201a]/80 via-[#0d201a]/10 to-transparent" aria-hidden="true" />
+                <span className="absolute left-4 top-4 inline-flex rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f8f8f1] backdrop-blur-sm">
+                    {metaLabel}
+                </span>
+            </div>
+            <div className="p-5 sm:p-6">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6d7c74]">Meri Gaadi Pick</p>
+                <h3 className="mt-3 font-serif text-2xl font-bold leading-snug text-[#152722]">{item.title}</h3>
+                {item.description && <p className="mt-3 text-sm leading-6 text-[#51635d]">{item.description}</p>}
+                {item.cta?.text && (
+                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-[#bf4f35]">
+                        {item.cta.text}
+                        <span aria-hidden="true">→</span>
+                    </span>
+                )}
+            </div>
+        </>
+    );
+
+    if (!href) {
+        return <article className="group overflow-hidden rounded-[1.75rem] border border-[#dfe5de] bg-white shadow-[0_18px_45px_rgba(20,37,29,0.06)]">{card}</article>;
+    }
+
+    return (
+        <Link
+            to={href}
+            className="group block overflow-hidden rounded-[1.75rem] border border-[#dfe5de] bg-white shadow-[0_18px_45px_rgba(20,37,29,0.06)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(20,37,29,0.12)]"
+        >
+            {card}
+        </Link>
+    );
+};
+
+const CatalogCard = ({ item, type }) => {
+    const heading = item.name || item.title;
+    const href = getItemHref(item, type);
+    const supportingText = type === "car" ? item.brand?.name || item.model || "Featured model" : item.description || item.subtitle || "Explore the segment";
+    const label = type === "car" ? "Model" : type === "brand" ? "Brand" : "Segment";
+
+    const card = (
+        <>
+            {type !== "category" ? (
+                <div className="overflow-hidden">
+                    <ImagePanel image={item.image} alt={heading} className="aspect-[16/10]" />
+                </div>
+            ) : (
+                <div className="flex min-h-[170px] items-end bg-[radial-gradient(circle_at_top_left,_rgba(247,195,71,0.25),transparent_38%),linear-gradient(135deg,#1b312d_0%,#13241d_100%)] p-5">
+                    <div className="rounded-full border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#edf0bc]">{label}</div>
+                </div>
+            )}
+            <div className="p-5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#6d7c74]">{label}</p>
+                <h3 className="mt-3 font-serif text-2xl font-bold leading-snug text-[#152722]">{heading}</h3>
+                {supportingText && <p className="mt-2 text-sm leading-6 text-[#51635d]">{supportingText}</p>}
+            </div>
+        </>
+    );
+
+    const classes = "group block overflow-hidden rounded-[1.6rem] border border-[#dfe5de] bg-white shadow-[0_18px_45px_rgba(20,37,29,0.05)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(20,37,29,0.12)]";
+
+    if (!href) {
+        return <article className={classes}>{card}</article>;
+    }
+
+    return <Link to={href} className={classes}>{card}</Link>;
+};
+
+const ArticleCard = ({ article }) => {
+    const date = formatDate(article.published_at || article.publishedAt || article.date);
+    const href = getItemHref(article, "article");
+
+    const card = (
+        <>
+            <ImagePanel image={article.image} alt={article.title} className="aspect-[16/10]" />
+            <div className="p-5 sm:p-6">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-bold uppercase tracking-[0.16em] text-[#6d7c74]">
+                    {article.category?.name && <span className="text-[#bf4f35]">{article.category.name}</span>}
+                    {article.category?.name && date && <span aria-hidden="true">·</span>}
+                    {date && <time dateTime={article.published_at || article.publishedAt || article.date}>{date}</time>}
+                </div>
+                <h3 className="mt-3 font-serif text-2xl font-bold leading-snug text-[#152722]">{article.title}</h3>
+                {article.excerpt && <p className="mt-3 text-sm leading-6 text-[#51635d]">{article.excerpt}</p>}
+                {article.author && <p className="mt-4 text-xs font-semibold uppercase tracking-[0.12em] text-[#69766a]">{article.author}</p>}
+            </div>
+        </>
+    );
+
+    const classes = "group block overflow-hidden rounded-[1.6rem] border border-[#dfe5de] bg-white shadow-[0_18px_45px_rgba(20,37,29,0.05)] transition-transform duration-200 hover:-translate-y-1 hover:shadow-[0_28px_60px_rgba(20,37,29,0.12)]";
+
+    if (!href) {
+        return <article className={classes}>{card}</article>;
+    }
+
+    return <Link to={href} className={classes}>{card}</Link>;
+};
+
+const renderSection = (key, section, homepageStatus, retry) => {
+    if (key === "hero" || key === "seo" || !section || typeof section !== "object") return null;
+
+    const items = Array.isArray(section.items) ? section.items : [];
+    const status = homepageStatus;
+    let content = null;
+    let emptyMessage = "There is no content to show here right now.";
+    let eyebrow = null;
+    let intro = section.description || null;
+    let action = null;
+
+    if (key === "featured_cars") {
+        emptyMessage = "No featured cars are available right now.";
+        eyebrow = "Discover cars";
+        intro = "The strongest contenders for Indian roads and budgets, curated without the clutter.";
+        action = (
+            <Link to="/categories" className="inline-flex items-center rounded-full border border-[#d4d9d3] bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#1f332c] transition hover:border-[#c9d1c9] hover:bg-[#f5f7f0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3825a]">
+                Explore all
+            </Link>
+        );
+        content = <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{items.map((item) => <CatalogCard key={item.id} item={item} type="car" />)}</div>;
+    } else if (key === "popular_brands") {
+        emptyMessage = "No brands are available right now.";
+        eyebrow = "Brands to know";
+        intro = "A quick look at the nameplates shaping purchase decisions and road presence.";
+        content = <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{items.map((item) => <CatalogCard key={item.id} item={item} type="brand" />)}</div>;
+    } else if (key === "car_categories") {
+        emptyMessage = "No car categories are available right now.";
+        eyebrow = "Explore segments";
+        intro = "Browse by vehicle type to narrow your shortlist with less noise.";
+        action = (
+            <Link to="/categories" className="inline-flex items-center rounded-full border border-[#d4d9d3] bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#1f332c] transition hover:border-[#c9d1c9] hover:bg-[#f5f7f0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3825a]">
+                Browse categories
+            </Link>
+        );
+        content = <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{items.map((item) => <CatalogCard key={item.id} item={item} type="category" />)}</div>;
+    } else if (key === "latest_articles") {
+        emptyMessage = "No articles are available right now.";
+        eyebrow = "From the journal";
+        intro = "Reviews, comparisons, and launch stories crafted for real-world buying decisions.";
+        action = (
+            <Link to="/blogs" className="inline-flex items-center rounded-full border border-[#d4d9d3] bg-white px-3.5 py-2 text-xs font-bold uppercase tracking-[0.14em] text-[#1f332c] transition hover:border-[#c9d1c9] hover:bg-[#f5f7f0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e3825a]">
+                Read more
+            </Link>
+        );
+        content = <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{items.map((item) => <ArticleCard key={item.id} article={item} />)}</div>;
+    } else {
+        eyebrow = "Picked for the road";
+        intro = section.description || "Freshly selected reads and car stories to help you choose better.";
+        content = <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{items.map((item) => <FeaturedCard key={item.id} item={item} />)}</div>;
+    }
+
+    return (
+        <ContentSection
+            key={key}
+            id={`home-${key}`}
+            title={section.title || "Featured"}
+            eyebrow={eyebrow}
+            intro={intro}
+            status={status}
+            items={items}
+            emptyMessage={emptyMessage}
+            onRetry={status === "error" ? retry : null}
+            action={action}
+        >
+            {content}
+        </ContentSection>
+    );
+};
+
+const Home = () => {
+    const [homepage, setHomepage] = useState(null);
+    const [featuredItems, setFeaturedItems] = useState([]);
+    const [homepageStatus, setHomepageStatus] = useState("loading");
+    const [featuredStatus, setFeaturedStatus] = useState("loading");
+    const [retryCount, setRetryCount] = useState(0);
+    const [seo, setSeo] = useState(null);
+
+    useHomepageSeo(seo);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        setHomepageStatus("loading");
+        setFeaturedStatus("loading");
+
+        Promise.allSettled([
+            fetchData("/api/homepage", controller.signal),
+            fetchData("/api/featured-content", controller.signal),
+            fetchData("/api/seo/homepage", controller.signal),
+        ]).then(([homepageResult, featuredResult, seoResult]) => {
+            if (controller.signal.aborted) return;
+
+            if (homepageResult.status === "fulfilled" && homepageResult.value && typeof homepageResult.value === "object" && !Array.isArray(homepageResult.value)) {
+                setHomepage(homepageResult.value);
+                setHomepageStatus("success");
+            } else {
+                setHomepageStatus("error");
+            }
+
+            if (featuredResult.status === "fulfilled" && Array.isArray(featuredResult.value)) {
+                setFeaturedItems(featuredResult.value);
+                setFeaturedStatus("success");
+            } else {
+                setFeaturedStatus("error");
+            }
+
+            if (seoResult.status === "fulfilled") {
+                setSeo(seoResult.value?.seo || null);
+            }
+        });
+
+        return () => controller.abort();
+    }, [retryCount]);
+
+    const retry = () => setRetryCount((count) => count + 1);
+
+    if (homepageStatus === "loading") {
+        return (
+            <div className="min-h-[70vh] bg-[#f4f5ee]" aria-busy="true" aria-label="Loading homepage">
+                <div className="min-h-[660px] animate-pulse bg-[#142b25] sm:min-h-[740px] lg:min-h-[680px] xl:min-h-[640px]" />
+                <div className="mx-auto grid max-w-7xl gap-4 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-3 lg:px-8">
+                    <LoadingCards />
+                </div>
+            </div>
+        );
+    }
+
+    if (homepageStatus === "error" || !homepage) {
+        return (
+            <div className="grid min-h-[60vh] place-items-center bg-[#f4f5ee] px-4 py-16">
+                <div className="max-w-lg text-center">
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#b74430]">Meri Gaadi</p>
+                    <h1 className="mt-3 font-serif text-3xl font-bold text-[#1c2b23]">The homepage isn’t available right now.</h1>
+                    <p role="alert" className="mt-3 text-sm leading-6 text-[#58645a]">We couldn’t load the latest homepage content.</p>
+                    <div className="mt-6 flex justify-center"><RetryButton onClick={retry} /></div>
+                </div>
+            </div>
+        );
+    }
+
+    const hero = homepage.hero || {};
+    const sectionEntries = Object.entries(homepage)
+        .filter(([key, section]) => key !== "seo" && key !== "hero" && section && typeof section === "object" && "display_order" in section)
+        .sort(([, first], [, second]) => first.display_order - second.display_order);
+    const apiBanners = [
+        ...(Array.isArray(hero.banners) ? hero.banners : []),
+        ...(Array.isArray(homepage.promotion?.items) ? homepage.promotion.items : []),
+        ...(Array.isArray(homepage.featured_cars?.banners) ? homepage.featured_cars.banners : []),
+    ];
+    const bannerIds = new Set(apiBanners.map((item) => item.id));
+    const visiblePlacements = new Set([
+        ...(hero.enabled ? ["homepage_hero"] : []),
+        ...(homepage.promotion?.enabled ? ["homepage_promotion"] : []),
+        ...(homepage.featured_cars?.enabled ? ["homepage_featured"] : []),
+    ]);
+    const banners = [
+        ...apiBanners,
+        ...featuredItems.filter((item) => visiblePlacements.has(item.placement) && !bannerIds.has(item.id)),
+    ];
+
+    return (
+        <div className="overflow-hidden bg-[#f4f5ee] text-[#1c2b23]">
+            {homepage.hero && (
+                <section aria-labelledby="home-heading" className="relative isolate min-h-[660px] overflow-hidden bg-[#142b25] text-white sm:min-h-[740px] lg:min-h-[680px] xl:min-h-[640px]">
+                    <HeroImage image={hero.image} alt={hero.title} />
+                    <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(13,31,25,0.02)_0%,rgba(13,31,25,0.04)_34%,rgba(13,31,25,0.76)_60%,#10241e_100%)] lg:bg-[linear-gradient(90deg,#10241e_0%,rgba(16,36,30,0.96)_25%,rgba(16,36,30,0.58)_47%,rgba(16,36,30,0.06)_76%)]" aria-hidden="true" />
+                    <div className="absolute inset-y-0 right-0 hidden w-[72%] bg-[linear-gradient(135deg,rgba(227,185,106,0.12),transparent_48%)] lg:block" aria-hidden="true" />
+                    <div className="relative mx-auto flex min-h-[660px] max-w-[1600px] items-end px-4 py-9 sm:min-h-[740px] sm:px-6 sm:py-12 lg:min-h-[680px] lg:px-8 xl:min-h-[640px] xl:items-center">
+                        <div className="relative z-10 max-w-2xl pb-1 lg:max-w-[420px] xl:max-w-[520px]">
+                            <p className="flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.22em] text-[#efc98a]">
+                                <span className="h-1 w-8 bg-[#f1784e]" aria-hidden="true" />
+                                Meri Gaadi
+                            </p>
+                            <h1 id="home-heading" className="mt-5 max-w-2xl font-serif text-4xl font-bold leading-[1.02] sm:text-5xl xl:text-6xl">
+                                {hero.title || "Meri Gaadi"}
                             </h1>
-                            <p className="max-w-xl text-sm leading-7 text-slate-300 md:text-base">
-                                Reviews, comparisons, EV coverage, and buying insights arranged with stronger hierarchy so the
-                                site feels more premium from the first scroll.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap gap-4">
-                            <Link
-                                to="/blogs"
-                                className="inline-flex items-center rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-500"
-                            >
-                                Explore all stories
-                            </Link>
-                            {heroBlog && (
-                                <Link
-                                    to={`/blog-info/${heroBlog.slug}`}
-                                    className="inline-flex items-center rounded-full border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
-                                >
-                                    Read featured review
+                            {hero.subtitle && <p className="mt-4 max-w-xl text-base leading-7 text-white/85 sm:text-lg">{hero.subtitle}</p>}
+                            <div className="mt-6 flex flex-wrap items-center gap-3 sm:mt-7">
+                                {hero.cta?.text && hero.cta?.url && (
+                                    hero.cta.url.startsWith("/") ? (
+                                        <Link
+                                            to={hero.cta.url}
+                                            className="inline-flex min-h-12 items-center gap-3 bg-[#f1784e] px-5 py-3 text-sm font-bold text-[#122720] transition-colors hover:bg-[#ff9a6e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#142b25]"
+                                        >
+                                            {hero.cta.text}<span aria-hidden="true">→</span>
+                                        </Link>
+                                    ) : (
+                                        <a
+                                            href={hero.cta.url}
+                                            className="inline-flex min-h-12 items-center gap-3 bg-[#f1784e] px-5 py-3 text-sm font-bold text-[#122720] transition-colors hover:bg-[#ff9a6e] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#142b25]"
+                                        >
+                                            {hero.cta.text}<span aria-hidden="true">→</span>
+                                        </a>
+                                    )
+                                )}
+                                <Link to="/categories" className="inline-flex min-h-12 items-center border border-white/20 bg-white/5 px-5 py-3 text-sm font-bold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#142b25]">
+                                    Browse segments
                                 </Link>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-                        <div className="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 text-white backdrop-blur-sm">
-                            <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Coverage</p>
-                            <p className="mt-4 text-3xl font-semibold">{blogs.length}</p>
-                            <p className="mt-2 text-sm text-slate-300">Stories across launches, comparisons, and ownership topics.</p>
-                        </div>
-                        <div className="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 text-white backdrop-blur-sm">
-                            <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Focus</p>
-                            <p className="mt-4 text-3xl font-semibold">{Object.keys(CATEGORIES).length}</p>
-                            <p className="mt-2 text-sm text-slate-300">SUVs, EVs, sedans, hatchbacks, and fast-moving segments.</p>
-                        </div>
-                        <div className="rounded-[1.75rem] border border-white/10 bg-white/10 p-5 text-white backdrop-blur-sm">
-                            <p className="text-xs uppercase tracking-[0.24em] text-slate-300">Tone</p>
-                            <p className="mt-4 text-3xl font-semibold">Clean</p>
-                            <p className="mt-2 text-sm text-slate-300">Blue-slate visuals carried through from the updated blog page.</p>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section className="px-4 py-6 md:px-8 md:py-8">
-                <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200/80 bg-slate-50 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] md:p-10">
-                <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-                    {heroBlog && (
-                        <Link
-                            to={`/blog-info/${heroBlog.slug}`}
-                            className="group overflow-hidden rounded-[2rem] bg-white shadow-[0_20px_55px_rgba(15,23,42,0.12)] transition hover:-translate-y-1"
-                        >
-                            <div className="relative h-full overflow-hidden">
-                                <img
-                                    src={getImageSrc(heroBlog.image)}
-                                    alt={heroBlog.title}
-                                    className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/10 to-transparent" />
-                                <div className="absolute left-6 top-6">
-                                    <span className="rounded-full bg-white/90 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-900">
-                                        Editor&apos;s Pick
-                                    </span>
-                                </div>
-                                <div className="absolute inset-x-0 bottom-0 p-6 text-white md:p-8">
-                                    <div className="flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-200">
-                                        <span>{heroBlog.category}</span>
-                                        <span>{formatDate(heroBlog.publishedDate)}</span>
-                                    </div>
-                                    <h2 className="mt-3 max-w-2xl text-3xl font-bold leading-tight md:text-4xl">
-                                        {heroBlog.title}
-                                    </h2>
-                                    <p className="mt-3 max-w-xl text-sm leading-7 text-slate-200 md:text-base">
-                                        {getDescription(heroBlog)}
-                                    </p>
-                                </div>
                             </div>
-                        </Link>
-                    )}
-
-                    <div className="space-y-5">
-                        <div className="rounded-[2rem] bg-white p-6 shadow-sm">
-                            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-600">Why this layout</p>
-                            <h2 className="mt-3 text-3xl font-bold text-slate-900">Built like a front page</h2>
-                            <p className="mt-3 text-sm leading-7 text-slate-600">
-                                The home page now introduces the strongest story first, then moves readers into curated topics
-                                and fresh articles without repeating the same card pattern.
-                            </p>
                         </div>
-
-                        {featuredBlogs.map((blog) => (
-                            <Link
-                                key={blog.id}
-                                to={`/blog-info/${blog.slug}`}
-                                className="group flex gap-4 rounded-[1.75rem] border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
-                            >
-                                <img
-                                    src={getImageSrc(blog.image)}
-                                    alt={blog.title}
-                                    className="h-28 w-28 rounded-[1.25rem] object-cover"
-                                />
-                                <div className="min-w-0">
-                                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                                        <span>{blog.category}</span>
-                                        <span>{formatDate(blog.publishedDate)}</span>
-                                    </div>
-                                    <h3 className="mt-2 text-lg font-semibold leading-snug text-slate-900">
-                                        {blog.title}
-                                    </h3>
-                                    <p className="mt-2 text-sm leading-6 text-slate-600">
-                                        {getDescription(blog)}
-                                    </p>
-                                </div>
-                            </Link>
-                        ))}
                     </div>
-                </div>
-                </div>
-            </section>
+                    <div className="absolute inset-x-0 bottom-0 h-1 bg-[#f1784e]" aria-hidden="true" />
+                </section>
+            )}
 
-            <section className="px-4 py-6 md:px-8 md:py-8">
-                <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200/80 bg-slate-50 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] md:p-8">
-                <div className="mb-6 flex items-end justify-between gap-4">
-                    <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-600">Categories</p>
-                        <h2 className="mt-2 text-3xl font-bold text-slate-900">Start with the segment you care about</h2>
-                    </div>
-                    <Link to="/blogs" className="hidden text-sm font-semibold text-slate-600 transition hover:text-blue-600 md:inline-flex">
-                        Browse archive
-                    </Link>
-                </div>
+            <ContentSection
+                id="home-featured-content"
+                title="Featured"
+                eyebrow="Picked for the road"
+                intro="Fresh storylines, standout models, and buying guidance that feels useful rather than noisy."
+                status={featuredStatus}
+                items={banners}
+                emptyMessage="There’s no featured content to show right now."
+                onRetry={retry}
+            >
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{banners.map((item) => <FeaturedCard key={item.id} item={item} />)}</div>
+            </ContentSection>
 
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-                    {Object.entries(CATEGORIES).map(([category, categoryObj]) => (
-                        <Link
-                            key={category}
-                            to={`/blogs?category=${category}`}
-                            className="group relative flex min-h-[18rem] flex-col justify-end overflow-hidden rounded-[1.9rem] bg-slate-900 p-6 text-white shadow-[0_18px_45px_rgba(15,23,42,0.12)] ring-1 ring-white/10 transition hover:-translate-y-0.5 hover:shadow-[0_24px_55px_rgba(15,23,42,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2"
-                        >
-                            <div
-                                className={`absolute inset-0 bg-gradient-to-br opacity-95 transition duration-500 group-hover:scale-105 group-hover:opacity-100 ${categoryCardGradient(category)}`}
-                                aria-hidden
-                            />
-                            <div
-                                className="absolute inset-0 opacity-25 mix-blend-overlay"
-                                style={{
-                                    backgroundImage:
-                                        "radial-gradient(circle at 25% 25%, rgba(255,255,255,0.3), transparent 42%), radial-gradient(circle at 75% 70%, rgba(59,130,246,0.2), transparent 45%)",
-                                }}
-                                aria-hidden
-                            />
-                            <div className="relative">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-blue-100/90">Category</p>
-                                <h3 className="mt-2 text-2xl font-bold">{categoryObj.name}</h3>
-                                <p className="mt-2 text-sm text-slate-200/90">
-                                    Explore focused stories, comparisons, and launch notes.
-                                </p>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-                </div>
-            </section>
-
-            <section className="px-4 pb-10 pt-2 md:px-8 md:pb-14 md:pt-4">
-                <div className="mx-auto max-w-7xl rounded-[2rem] border border-slate-200/80 bg-slate-50 p-6 shadow-[0_12px_40px_rgba(15,23,42,0.06)] md:p-10">
-                <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <div>
-                        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-blue-600">Latest stories</p>
-                        <h2 className="mt-2 text-3xl font-bold text-slate-900">Fresh reads from the garage desk</h2>
-                    </div>
-                    <Link
-                        to="/blogs"
-                        className="inline-flex items-center rounded-full border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-500 hover:text-blue-600"
-                    >
-                        View all posts
-                    </Link>
-                </div>
-
-                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {latestBlogs.map((blog) => (
-                        <Link
-                            key={blog.id}
-                            to={`/blog-info/${blog.slug}`}
-                            className="group overflow-hidden rounded-[1.85rem] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
-                        >
-                            <div className="overflow-hidden">
-                                <img
-                                    src={getImageSrc(blog.image)}
-                                    alt={blog.title}
-                                    className="h-56 w-full object-cover transition duration-500 group-hover:scale-105"
-                                />
-                            </div>
-                            <div className="space-y-3 p-5">
-                                <div className="flex flex-wrap items-center gap-3 text-xs font-medium uppercase tracking-[0.16em] text-slate-500">
-                                    <span>{blog.category}</span>
-                                    <span>{formatDate(blog.publishedDate)}</span>
-                                </div>
-                                <h3 className="text-xl font-semibold leading-snug text-slate-900">{blog.title}</h3>
-                                <p className="text-sm leading-6 text-slate-600">{getDescription(blog)}</p>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
-                </div>
-            </section>
+            {sectionEntries.map(([key, section]) => renderSection(key, section, homepageStatus, retry))}
         </div>
     );
 };

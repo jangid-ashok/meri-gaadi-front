@@ -1,8 +1,12 @@
 {
   "name": "meri-gaadi",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
+  "description": "meri-gaadi front pages ",
+  "license": "ISC",
+  "author": "Ashok Jangid",
   "type": "module",
+  "main": "eslint.config.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -10,7 +14,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "framer-motion": "^12.23.9",
     "html-react-parser": "^5.2.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
